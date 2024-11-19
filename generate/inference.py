@@ -8,7 +8,7 @@ import torch
 from vllm import LLM
 from vllm import SamplingParams
 import json
-from utils import ANNO, ANNO_U
+from utils import *
 from math import ceil
 import os
 import random
@@ -51,33 +51,24 @@ def read_problems(input_path, output_path):
 
 def encode_prompt(batch, example="fewshot", lang="python", dataset="math"):
     prompt_batch = []
-    prompts_all = json.load(open("prompts.json"))
-    if dataset == "MWP":
+    prompts = json.load(open("prompts.json"))
+    if dataset in ["MWP", "gsm", "asdiv", "svamp"]:
         dataset = "math"
     for i in batch:
-        prompt = prompts_all[example]
+        prompt = "Question: " + i["input"] + prompts["instruction"][dataset][lang]
+        if lang != "cot":
+            prompt += CODE_INSTRUCTION
+            if lang == "java":
+                prompt += JAVA_IMPORT
+            if lang == "cpp":
+                prompt += CPP_INCLUDE
         if example == "fewshot":
-            prompt = prompt[dataset][lang] + "Question: " + i["input"] + "\n" + prompts_all["fewshot_tail"][dataset][lang]
-        elif example == "zeroshot":
-            prompt = "Question: " + i["input"] + "\n\n" + prompt[lang]
-        else:
-            raise ValueError("No such example!")
+            prompt = prompts[example][dataset][lang] + ANSWER_ONLY_LAST_PROBLEM + prompt
         prompt_batch.append(prompt)
     
     for i, p in enumerate(random.choices(prompt_batch, k=3)):
         print(f"Prompt Example {i}:\n{p}\n\n")
     return prompt_batch
-
-
-def truncate(code):
-    if "```" in code:
-        st = code.find("```")
-        code = code[st + len("```"):]
-        newline = code.find("\n")
-        code = code[newline:]
-        ed = code.find("```")
-        code = code[:ed]
-    return code.strip()
 
 
 def generate(dataset, lang, llm, sampling_params, args):
@@ -117,7 +108,7 @@ def generate(dataset, lang, llm, sampling_params, args):
                     #         d["ori"] = d["ori"][:args.N]
                     #         break
                     for gen_seq in gen_seqs:
-                        d["code"].append(truncate(gen_seq.strip()))
+                        d["code"].append(truncate(gen_seq.strip(), lang))
                         d["ori"].append(gen_seq.strip())
                         if len(d["code"]) >= args.N:
                             d["code"] = d["code"][:args.N]
@@ -150,6 +141,8 @@ if __name__ == '__main__':
 
     argsdict = vars(args)
     print(pprint.pformat(argsdict))
+
+    os.makedirs(PATH + args.middle_dir, exist_ok=True)
 
     os.environ['VLLM_WORKER_MULTIPROC_METHOD']="spawn"
     llm = LLM(model=args.model, tensor_parallel_size=args.num_gpus, trust_remote_code=True)

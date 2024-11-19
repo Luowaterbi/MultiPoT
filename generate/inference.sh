@@ -1,0 +1,14 @@
+python inference.py \
+    --model models/Llama-3.1-70B-Instruct \
+    --datasets math,MWP,date,color,penguins \
+    --examples fewshot \
+    --lang python,r,cpp,java,js,cot \
+    --temperature 0 \
+    --num_gpus 8 \
+    --decoding_style greedy \
+    --N 1 \
+    --num_seqs_per_iter 1 \
+    --batch_size 5000 \
+    --output_suffix "" \
+    --top_p 1 \
+    --middle_dir outputs_llama3_1_70b
