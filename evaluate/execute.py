@@ -81,12 +81,14 @@ def extract_answer(ds):
             try:
                 # 输出很多的，只要开头的这一块
                 ans = code.split(trigger)[-1]
+                if ans[-1] == ".":
+                    ans = ans[:-1]
                 # num = num.replace(",", "").replace("$", "").replace("€", "").strip()
                 # if num[-1] == "%":
                 #     num = float(num[:-1]) / 100
                 # else:
                 #     num = eval(num)
-                d["exec_ans"].append(ans)
+                d["exec_ans"].append(ans.strip())
                 d["RE"].append(False)
             except Exception as e:
                 d["exec_ans"].append(str(e))
@@ -116,6 +118,7 @@ if __name__ == "__main__":
 
             if lang == "cot":
                 ds = extract_answer(ds)
+                res = calcu_mp(ds, "best")
             else:
                 exec_path = PATH + f"execution/{args.middle_dir}/{output_file}"
                 if not os.path.exists(exec_path):
